@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Route {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  routeId   String   @map("route_id")
+  routeName String   @map("route_name")
+  stages    Stage[]
+
+  @@map("routes")
+}
+
+type Stage {
+  stageNumber       Int                @map("stage_number")
+  stageName         String             @map("stage_name")
+  distanceKm        Float              @map("distance_km")
+  distanceMiles     Float              @map("distance_miles")
+  gpx               String
+  // Storing as JSON because keys are dynamic (avg_daily_distance_1, _2, etc)
+  avgDailyDistances  Json[]             @map("avg_daily_distance")
+  details           StageDetails
+  facilities        Facility[]
+  accommodations    Accommodation[]
+}
+
+type StageDetails {
+  totalDistance      String   @map("total_distance")
+  totalTime          String   @map("total_time")
+  accumulatedAscent  String   @map("accumulated_ascent")
+  accumulatedDescent String   @map("accumulated_descent")
+  walkingSurface     String[] @map("walking_surface")
+  elevationProfile   String   @map("elevation_profile")
+  challenges         String[]
+  highlights         String[]
+}
+
+type Facility {
+  index    Int
+  services String[]
+}
+
+type Accommodation {
+  name          String
+  priceCategory String  @map("price_category")
+  contactUrl    String? @map("contact_url")
+  contactPhone  String? @map("contact_phone")
+}
