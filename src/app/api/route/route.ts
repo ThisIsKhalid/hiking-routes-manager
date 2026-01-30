@@ -3,18 +3,65 @@ import { NextResponse } from 'next/server';
 
 const prisma = new PrismaClient();
 
+export async function GET() {
+  try {
+    const routes = await prisma.route.findMany();
+    
+    // We need to reverse-map the data to match the requested JSON format structure if we want exact symmetry?
+    // The user requested: "download all routes in json format together as it is"
+    // { routes: [ { single route }, ... ] }
+    // Our DB stores fields in camelCase (routeId, routeName) but input was snake_case (route_id, route_name).
+    // If we want "as it is", we should probably map back to snake_case for the download.
+    
+    const formattedRoutes = routes.map((route: any) => ({
+      route_id: route.routeId,
+      route_name: route.routeName,
+      stages: route.stages.map((stage: any) => ({
+        stage_number: stage.stageNumber,
+        stage_name: stage.stageName,
+        distance_km: stage.distanceKm,
+        distance_miles: stage.distanceMiles,
+        gpx: stage.gpx,
+        avg_daily_distance: stage.avgDailyDistances,
+        details: {
+          total_distance: stage.details.totalDistance,
+          total_time: stage.details.totalTime,
+          accumulated_ascent: stage.details.accumulatedAscent,
+          accumulated_descent: stage.details.accumulatedDescent,
+          walking_surface: stage.details.walkingSurface,
+          elevation_profile: stage.details.elevationProfile,
+          challenges: stage.details.challenges,
+          highlights: stage.details.highlights,
+        },
+        facilities: stage.facilities.map((f: any) => ({
+          index: f.index,
+          services: f.services,
+        })),
+        accommodations: stage.accommodations.map((a: any) => ({
+          name: a.name,
+          price_category: a.priceCategory,
+          contact_url: a.contactUrl,
+          contact_phone: a.contactPhone,
+        })),
+      }))
+    }));
+
+    return NextResponse.json({ routes: formattedRoutes });
+  } catch (error) {
+    console.error('Error fetching routes:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch routes' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Map the input JSON fields to our schema
-    // The input has 'route_id', 'route_name', 'stages' which matches our schema mapping almost 1:1
-    // but Prisma expects camelCase for fields if we mapped them.
-    // However, our model has `routeId` mapped to `route_id`.
-    // The input JSON keys ARE `route_id`.
-    // We need to transform or just pass if the keys match the @map?
-    // No, Prisma Client expects the property names defined in the model (e.g. `routeId`), NOT the database column names.
-    // So we must verify the input and map it.
+    // The body might come from our form (snake_case) or direct JSON.
+    // Our form now produces snake_case to match the original JSON structure expectation.
 
     const { route_id, route_name, stages } = body;
 
@@ -24,7 +71,9 @@ export async function POST(request: Request) {
       distanceKm: stage.distance_km,
       distanceMiles: stage.distance_miles,
       gpx: stage.gpx,
-      avgDailyDistances: stage.avg_daily_distance, // Json[]
+      // The schema field is avgDailyDistances (plural) as per user edit
+      // The input json field is avg_daily_distance (singular)
+      avgDailyDistances: stage.avg_daily_distance, 
       details: {
         totalDistance: stage.details.total_distance,
         totalTime: stage.details.total_time,
@@ -55,6 +104,7 @@ export async function POST(request: Request) {
       },
     });
 
+    // Return the created route, maybe mapped back if needed, but for now raw is fine for response
     return NextResponse.json({ success: true, data: newRoute });
   } catch (error) {
     console.error('Error creating route:', error);
