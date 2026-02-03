@@ -158,7 +158,7 @@ export default function RouteForm() {
   return (
     <div className="space-y-8">
       {/* Quick Import */}
-      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+      {/* <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
         <label className="block text-sm font-medium text-cyan-300 mb-2">
           Or paste existing JSON to populate form:
         </label>
@@ -167,7 +167,7 @@ export default function RouteForm() {
           className="w-full h-24 bg-slate-900 border border-slate-600 rounded p-2 text-xs font-mono text-slate-300 focus:ring-1 focus:ring-cyan-500 outline-none"
           placeholder='{"route_id": "...", "stages": [...]}'
         />
-      </div>
+      </div> */}
 
       <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
