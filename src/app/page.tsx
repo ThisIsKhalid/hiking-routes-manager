@@ -1,17 +1,18 @@
-'use client';
+"use client";
 
-import RouteForm from './components/RouteForm';
+import RouteForm from "./components/RouteFormUpdate";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-sans p-4 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-sans p-4 md:p-8 flex flex-col items-center">
       <div className="max-w-6xl w-full space-y-8">
         <header className="text-center space-y-4">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 drop-shadow-lg">
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-cyan-400 to-purple-400 drop-shadow-lg">
             Hiking Routes Manager
           </h1>
           <p className="text-lg text-slate-300">
-            Create and edit complex hiking routes with stages, detailed metrics, and accommodation data.
+            Create and edit complex hiking routes with stages, detailed metrics,
+            and accommodation data.
           </p>
         </header>
 

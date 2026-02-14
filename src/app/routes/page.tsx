@@ -1,11 +1,12 @@
-'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import { Download, FileJson, Map } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Download, FileJson, Map } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function RoutesPage() {
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,15 +17,15 @@ export default function RoutesPage() {
   const fetchRoutes = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/route');
+      const res = await fetch("/api/route");
       const data = await res.json();
       if (data.routes) {
         setRoutes(data.routes);
       } else {
-        setError('Failed to load routes');
+        setError("Failed to load routes");
       }
     } catch (err) {
-      setError('Error fetching routes');
+      if (err) setError("Error fetching routes");
     } finally {
       setLoading(false);
     }
@@ -35,18 +36,18 @@ export default function RoutesPage() {
 
     // Format matches the requirement: { routes: [ ... ] }
     // The API already returns { routes: [ ... ] } structure if we just fetched from /api/route?
-    // Actually /api/route returns { routes: [...] }. 
+    // Actually /api/route returns { routes: [...] }.
     // We stored that in state 'routes'.
     // So we just wrap it back.
-    
-    const downloadData = { routes }; 
+
+    const downloadData = { routes };
     const blob = new Blob([JSON.stringify(downloadData, null, 2)], {
-      type: 'application/json',
+      type: "application/json",
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `hiking_routes_export_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `hiking_routes_export_${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -67,12 +68,14 @@ export default function RoutesPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white">All Routes</h1>
-            <p className="text-slate-400">Manage and export your hiking routes</p>
+            <p className="text-slate-400">
+              Manage and export your hiking routes
+            </p>
           </div>
           <button
             onClick={handleDownload}
             disabled={!routes.length}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-3 bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
           >
             <Download size={20} />
             Download All JSON
@@ -88,15 +91,22 @@ export default function RoutesPage() {
         {routes.length === 0 && !error ? (
           <div className="text-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
             <Map size={48} className="mx-auto text-slate-600 mb-4" />
-            <h3 className="text-xl font-medium text-slate-300">No routes found</h3>
-            <p className="text-slate-500 mt-2">Create your first route to get started.</p>
-            <Link href="/" className="inline-block mt-4 text-cyan-400 hover:text-cyan-300 hover:underline">
+            <h3 className="text-xl font-medium text-slate-300">
+              No routes found
+            </h3>
+            <p className="text-slate-500 mt-2">
+              Create your first route to get started.
+            </p>
+            <Link
+              href="/"
+              className="inline-block mt-4 text-cyan-400 hover:text-cyan-300 hover:underline"
+            >
               Create Route &rarr;
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {routes.map((route: any) => (
+            {routes?.map((route: any) => (
               <div
                 key={route.route_id} // using mapped snake_case key
                 className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-colors group"
@@ -109,19 +119,25 @@ export default function RoutesPage() {
                     {route.route_id}
                   </span>
                 </div>
-                
-                <h3 className="text-xl font-bold text-slate-100 mb-2">{route.route_name}</h3>
-                
+
+                <h3 className="text-xl font-bold text-slate-100 mb-2">
+                  {route.route_name}
+                </h3>
+
                 <div className="space-y-2 text-sm text-slate-400">
                   <div className="flex justify-between">
                     <span>Stages:</span>
-                    <span className="font-mono text-slate-200">{route.stages?.length || 0}</span>
+                    <span className="font-mono text-slate-200">
+                      {route.stages?.length || 0}
+                    </span>
                   </div>
                   {route.stages?.[0] && (
-                     <div className="flex justify-between">
-                        <span>First Stage:</span>
-                        <span className="truncate max-w-[150px]">{route.stages[0].stage_name}</span>
-                     </div>
+                    <div className="flex justify-between">
+                      <span>First Stage:</span>
+                      <span className="truncate max-w-37.5">
+                        {route.stages[0].stage_name}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

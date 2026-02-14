@@ -8,27 +8,25 @@ datasource db {
 }
 
 model Route {
-  id               String  @id @default(auto()) @map("_id") @db.ObjectId
-  routeId          String  @map("route_id")
-  routeName        String  @map("route_name")
-  // route-level avg daily distance metrics (stored as JSON objects with dynamic keys)
-  avgDailyDistance Json[]  @map("avg_daily_distance")
-  // route-level starting points
-  startingPoint    Json[]  @map("starting_point")
-  stages           Stage[]
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  routeId   String   @map("route_id")
+  routeName String   @map("route_name")
+  stages    Stage[]
 
   @@map("routes")
 }
 
 type Stage {
-  stageNumber    Int             @map("stage_number")
-  stageName      String          @map("stage_name")
-  distanceKm     Float           @map("distance_km")
-  distanceMiles  Float           @map("distance_miles")
-  gpx            String
-  details        StageDetails
-  facilities     Facility[]
-  accommodations Accommodation[]
+  stageNumber       Int                @map("stage_number")
+  stageName         String             @map("stage_name")
+  distanceKm        Float              @map("distance_km")
+  distanceMiles     Float              @map("distance_miles")
+  gpx               String
+  // Storing as JSON because keys are dynamic (avg_daily_distance_1, _2, etc)
+  avgDailyDistances  Json[]             @map("avg_daily_distance")
+  details           StageDetails
+  facilities        Facility[]
+  accommodations    Accommodation[]
 }
 
 type StageDetails {
@@ -44,8 +42,6 @@ type StageDetails {
 
 type Facility {
   index    Int
-  name     String   @map("name")
-  distance String   @map("distance")
   services String[]
 }
 
