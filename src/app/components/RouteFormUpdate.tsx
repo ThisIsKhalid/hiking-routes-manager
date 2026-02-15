@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clsx } from "clsx";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useFieldArray,
   useForm,
@@ -87,9 +87,66 @@ const routeSchema = z.object({
   ),
 });
 
-type RouteFormValues = z.infer<typeof routeSchema>;
+export type RouteFormValues = z.infer<typeof routeSchema>;
 
-export default function RouteForm() {
+type RouteFormUpdateProps = {
+  initialData?: RouteFormValues;
+  targetRouteId: string;
+  onCancel?: () => void;
+  onUpdated?: (data: Record<string, unknown>) => void;
+};
+
+function normalizeInitialData(input?: RouteFormValues): RouteFormValues {
+  if (!input) {
+    return {
+      route_id: "",
+      route_name: "",
+      avg_daily_distance: [],
+      starting_point: [],
+      stages: [],
+    };
+  }
+
+  const normalizedAvgDaily = (input.avg_daily_distance || []).map((item) => {
+    const record = item as Record<string, unknown>;
+    const dynamicKey = Object.keys(record).find((key) =>
+      key.startsWith("avg_daily_distance_"),
+    );
+    const dynamicLabel =
+      dynamicKey && typeof record[dynamicKey] === "string"
+        ? (record[dynamicKey] as string)
+        : "";
+    const label =
+      (typeof record.label === "string" && record.label) ||
+      (typeof record.range_value === "string" && record.range_value) ||
+      dynamicLabel ||
+      "";
+
+    return {
+      range_value: label,
+      minimum_km: record.minimum_km as number | undefined,
+      minimum_mile: record.minimum_mile as number | undefined,
+      maximum_km: record.maximum_km as number | undefined,
+      maximum_mile: record.maximum_mile as number | undefined,
+      days: record.days as number | undefined,
+    };
+  });
+
+  return {
+    route_id: input.route_id || "",
+    route_name: input.route_name || "",
+    avg_daily_distance: normalizedAvgDaily,
+    starting_point: input.starting_point || [],
+    stages: input.stages || [],
+  };
+}
+
+export default function RouteFormUpdate({
+  initialData,
+  targetRouteId,
+  onCancel,
+  onUpdated,
+}: RouteFormUpdateProps) {
   const [submissionStatus, setSubmissionStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -99,20 +156,19 @@ export default function RouteForm() {
     register,
     control,
     handleSubmit,
+    reset,
 
     formState: { errors },
     watch,
     setValue,
   } = useForm<RouteFormValues>({
     resolver: zodResolver(routeSchema) as Resolver<RouteFormValues>,
-    defaultValues: {
-      route_id: "",
-      route_name: "",
-      avg_daily_distance: [],
-      starting_point: [],
-      stages: [],
-    },
+    defaultValues: normalizeInitialData(initialData),
   });
+
+  useEffect(() => {
+    reset(normalizeInitialData(initialData));
+  }, [initialData, reset]);
 
   const {
     fields: stageFields,
@@ -157,15 +213,19 @@ export default function RouteForm() {
 
       const payload = { routes: [transformedData] };
 
-      const res = await fetch("/api/route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `/api/route/${encodeURIComponent(targetRouteId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       const resultData = await res.json();
       if (res.ok) {
         setSubmissionStatus("success");
         setResult(resultData as Record<string, unknown>);
+        onUpdated?.(resultData as Record<string, unknown>);
       } else {
         setSubmissionStatus("error");
         setResult(resultData as Record<string, unknown>);
@@ -260,7 +320,16 @@ export default function RouteForm() {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-slate-700">
+        <div className="pt-6 border-t border-slate-700 flex flex-col sm:flex-row gap-3">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-full sm:w-40 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
             disabled={submissionStatus === "loading"}

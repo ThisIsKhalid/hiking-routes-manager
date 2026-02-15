@@ -1,14 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Download, FileJson, Map } from "lucide-react";
+import { Download, FileJson, Map, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import RouteFormUpdate, {
+  type RouteFormValues,
+} from "../components/RouteFormUpdate";
 
 export default function RoutesPage() {
-  const [routes, setRoutes] = useState<unknown[]>([]);
+  const [routes, setRoutes] = useState<RouteFormValues[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<RouteFormValues | null>(
+    null,
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchRoutes();
@@ -20,7 +26,7 @@ export default function RoutesPage() {
       const res = await fetch("/api/route");
       const data = await res.json();
       if (data.routes) {
-        setRoutes(data.routes);
+        setRoutes(data.routes as RouteFormValues[]);
       } else {
         setError("Failed to load routes");
       }
@@ -52,6 +58,20 @@ export default function RoutesPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleOpenUpdate = (route: RouteFormValues) => {
+    setSelectedRoute(route);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseUpdate = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleUpdated = () => {
+    setIsModalOpen(false);
+    fetchRoutes();
   };
 
   if (loading) {
@@ -106,10 +126,19 @@ export default function RoutesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {routes?.map((route: any) => (
+            {routes.map((route) => (
               <div
                 key={route.route_id} // using mapped snake_case key
-                className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-colors group"
+                onClick={() => handleOpenUpdate(route)}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-colors group cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleOpenUpdate(route);
+                  }
+                }}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="bg-cyan-950/50 p-3 rounded-lg text-cyan-400 group-hover:text-cyan-300 group-hover:bg-cyan-900/50 transition-colors">
@@ -145,6 +174,38 @@ export default function RoutesPage() {
           </div>
         )}
       </div>
+
+      {isModalOpen && selectedRoute && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/70 p-6">
+          <div className="absolute inset-0" onClick={handleCloseUpdate} />
+          <div className="relative w-full max-w-5xl bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-cyan-400">
+                  Update Route
+                </p>
+                <h2 className="text-2xl font-bold text-white">
+                  {selectedRoute.route_name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseUpdate}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <RouteFormUpdate
+              initialData={selectedRoute}
+              targetRouteId={selectedRoute.route_id}
+              onCancel={handleCloseUpdate}
+              onUpdated={handleUpdated}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
