@@ -44,9 +44,9 @@ type StageDetails {
 
 type Facility {
   index    Int
-  name     String   @map("name")
-  distance String   @map("distance")
-  services String[]
+  name     String          @map("name")
+  distance String          @map("distance")
+  services ServiceLabels[]
 }
 
 type Accommodation {
@@ -54,4 +54,15 @@ type Accommodation {
   priceCategory String  @map("price_category")
   contactUrl    String? @map("contact_url")
   contactPhone  String? @map("contact_phone")
+}
+
+enum ServiceLabels {
+  Shop
+  ATM
+  Food_Drink
+  Camino_Stamp
+  Hotel
+  Guest_House
+  Supermarket
+  Campsite
 }
