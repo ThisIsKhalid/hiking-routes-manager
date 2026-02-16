@@ -572,10 +572,9 @@ function FacilitiesInput({
                 label="Distance"
                 {...register(`stages.${stageIndex}.facilities.${k}.distance`)}
               />
-              <StringArrayInput
+              <ServicesSelectInput
                 name={`stages.${stageIndex}.facilities.${k}.services`}
                 label="Services"
-                simple
                 watch={watch}
                 setValue={setValue}
               />
@@ -713,6 +712,112 @@ function StringArrayInput({
                 setValue(name, newValue);
               }}
               className="text-slate-600 hover:text-red-400"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SERVICE_OPTIONS = [
+  "Shop",
+  "ATM",
+  "Food_Drink",
+  "Camino_Stamp",
+  "Hotel",
+  "Guest_House",
+  "Supermarket",
+  "Campsite",
+];
+
+function ServicesSelectInput({
+  name,
+  label,
+  watch,
+  setValue,
+}: {
+  name: Path<RouteFormValues>;
+  label: string;
+  watch: UseFormWatch<RouteFormValues>;
+  setValue: UseFormSetValue<RouteFormValues>;
+}) {
+  const value = (watch(name) as unknown as string[]) || [];
+  const [selected, setSelected] = useState(SERVICE_OPTIONS[0]);
+  const availableOptions = SERVICE_OPTIONS.filter(
+    (option) => !value.includes(option),
+  );
+  const canAdd = availableOptions.length > 0;
+  const resolvedSelected = availableOptions.includes(selected)
+    ? selected
+    : availableOptions[0] || "";
+
+  return (
+    <div className="bg-slate-950/30 p-3 rounded border border-slate-800">
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-semibold text-slate-400 uppercase">
+          {label}
+        </label>
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <select
+          value={resolvedSelected}
+          onChange={(e) => setSelected(e.target.value)}
+          disabled={!canAdd}
+          className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+        >
+          {canAdd ? (
+            availableOptions.map((option) => (
+              <option key={option} value={option}>
+                {option.replace(/_/g, " ")}
+              </option>
+            ))
+          ) : (
+            <option value="" disabled>
+              All services added
+            </option>
+          )}
+        </select>
+        <button
+          type="button"
+          onClick={() => {
+            if (!canAdd) {
+              return;
+            }
+            const nextValue = [...value, resolvedSelected];
+            setValue(name, nextValue);
+            const nextAvailable = SERVICE_OPTIONS.filter(
+              (option) => !nextValue.includes(option),
+            );
+            if (nextAvailable.length > 0) {
+              setSelected(nextAvailable[0]);
+            }
+          }}
+          className="text-cyan-500 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Add service"
+          disabled={!canAdd}
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+      <div className="space-y-2">
+        {value.map((item: string, i: number) => (
+          <div key={`${item}-${i}`} className="flex items-center gap-2">
+            <input
+              value={item.replace(/_/g, " ")}
+              readOnly
+              className="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-sm text-slate-200"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const newValue = value.filter((_, idx) => idx !== i);
+                setValue(name, newValue);
+              }}
+              className="text-slate-600 hover:text-red-400"
+              aria-label="Remove service"
             >
               <Trash2 size={14} />
             </button>
