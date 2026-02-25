@@ -54,6 +54,8 @@ type Accommodation {
   priceCategory String  @map("price_category")
   contactUrl    String? @map("contact_url")
   contactPhone  String? @map("contact_phone")
+  lat           Float?  @map("lat")
+  long          Float?  @map("long")
 }
 
 enum ServiceLabels {

@@ -81,6 +81,8 @@ const routeSchema = z.object({
           price_category: z.string(),
           contact_url: z.string().optional(),
           contact_phone: z.string().optional(),
+          lat: z.coerce.number().optional(),
+          long: z.coerce.number().optional(),
         }),
       ),
     }),
@@ -608,7 +610,9 @@ function AccommodationsInput({
         </h4>
         <button
           type="button"
-          onClick={() => append({ name: "", price_category: "$" })}
+          onClick={() =>
+            append({ name: "", price_category: "$", lat: 0, long: 0 })
+          }
           className="text-xs bg-slate-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
         >
           <Plus size={12} /> Add Hotel
@@ -649,6 +653,18 @@ function AccommodationsInput({
                 {...register(
                   `stages.${stageIndex}.accommodations.${k}.contact_phone`,
                 )}
+              />
+              <Input
+                label="Lat"
+                type="number"
+                step="0.000001"
+                {...register(`stages.${stageIndex}.accommodations.${k}.lat`)}
+              />
+              <Input
+                label="Long"
+                type="number"
+                step="0.000001"
+                {...register(`stages.${stageIndex}.accommodations.${k}.long`)}
               />
             </div>
           </div>
