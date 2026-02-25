@@ -77,6 +77,8 @@ export async function GET() {
           price_category: a.priceCategory,
           contact_url: a.contactUrl,
           contact_phone: a.contactPhone,
+          lat: (a as { lat?: number | null }).lat ?? null,
+          long: (a as { long?: number | null }).long ?? null,
         })),
       })),
     }));

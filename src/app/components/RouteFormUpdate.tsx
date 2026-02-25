@@ -586,13 +586,13 @@ function AccommodationsInput({
                 )}
               />
               <Input
-                label="Lat"
+                label="Latitude"
                 type="number"
                 step="0.000001"
                 {...register(`stages.${stageIndex}.accommodations.${k}.lat`)}
               />
               <Input
-                label="Long"
+                label="Longitude"
                 type="number"
                 step="0.000001"
                 {...register(`stages.${stageIndex}.accommodations.${k}.long`)}
