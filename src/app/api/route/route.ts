@@ -107,6 +107,8 @@ export async function POST(request: Request) {
       name?: string;
       price_category?: string;
       contact_url?: string | null;
+      lat?: number | null;
+      long?: number | null;
       contact_phone?: string | null;
     };
 
@@ -151,6 +153,8 @@ export async function POST(request: Request) {
       priceCategory: string;
       contactUrl?: string | null;
       contactPhone?: string | null;
+      lat?: number | null;
+      long?: number | null;
     };
 
     type CreatedDetails = {
@@ -209,6 +213,8 @@ export async function POST(request: Request) {
           priceCategory: a.price_category ?? "",
           contactUrl: a.contact_url ?? null,
           contactPhone: a.contact_phone ?? null,
+          lat: a.lat ?? null,
+          long: a.long ?? null,
         }),
       ),
     }));
@@ -259,6 +265,8 @@ export async function POST(request: Request) {
             price_category: a.priceCategory,
             contact_url: a.contactUrl ?? null,
             contact_phone: a.contactPhone ?? null,
+            lat: a.lat ?? null,
+            long: a.long ?? null,
           }),
         ),
       })),
