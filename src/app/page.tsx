@@ -1,6 +1,6 @@
 "use client";
 
-import RouteForm from "./components/RouteFormUpdate";
+import RouteFormUpdate from "./components/RouteFormUpdate";
 
 export default function Home() {
   return (
@@ -17,7 +17,7 @@ export default function Home() {
         </header>
 
         <main className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-          <RouteForm />
+          <RouteFormUpdate targetRouteId="" />
         </main>
       </div>
     </div>

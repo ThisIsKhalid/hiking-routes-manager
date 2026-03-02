@@ -93,7 +93,7 @@ export type RouteFormValues = z.infer<typeof routeSchema>;
 
 type RouteFormUpdateProps = {
   initialData?: RouteFormValues;
-  targetRouteId: string;
+  targetRouteId?: string;
   onCancel?: () => void;
   onUpdated?: (data: Record<string, unknown>) => void;
 };
@@ -214,7 +214,7 @@ export default function RouteFormUpdate({
       };
 
       const payload = { routes: [transformedData] };
-
+      if (!targetRouteId) return;
       const res = await fetch(
         `/api/route/${encodeURIComponent(targetRouteId)}`,
         {
@@ -711,7 +711,7 @@ function StringArrayInput({
       </div>
       <div className="space-y-2">
         {value.map((item: string, i: number) => (
-          <div key={i} className="flex gap-2">
+          <div key={`string-${i}-${item}`} className="flex gap-2">
             <input
               value={item}
               onChange={(e) => {
@@ -785,8 +785,8 @@ function ServicesSelectInput({
           className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
         >
           {canAdd ? (
-            availableOptions.map((option) => (
-              <option key={option} value={option}>
+            availableOptions.map((option, idx) => (
+              <option key={`opt-${idx}-${option}`} value={option}>
                 {option.replace(/_/g, " ")}
               </option>
             ))

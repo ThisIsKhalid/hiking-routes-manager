@@ -77,10 +77,11 @@ function formatRoute(route: Prisma.RouteGetPayload<Prisma.RouteDefaultArgs>) {
 
 export async function GET(
   _request: Request,
-  context: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const targetRouteId = context.params.id;
+    const params = await context.params;
+    const targetRouteId = params.id;
     const route = await prisma.route.findFirst({
       where: { routeId: targetRouteId },
     });
@@ -104,9 +105,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  context: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const params = await context.params;
     const body = await request.json();
 
     type FacilityIn = {
@@ -157,7 +159,7 @@ export async function PUT(
       ? (body.routes[0] as IncomingRoute)
       : (body as IncomingRoute);
 
-    const targetRouteId = context.params.id;
+    const targetRouteId = params.id;
     const nextRouteId = incomingRoute.route_id ?? targetRouteId;
 
     const formattedStages = (incomingRoute.stages || []).map(

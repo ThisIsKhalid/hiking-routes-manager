@@ -126,9 +126,9 @@ export default function RoutesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {routes.map((route) => (
+            {routes.map((route, index) => (
               <div
-                key={route.route_id} // using mapped snake_case key
+                key={`${route.route_id}-${index}`}
                 onClick={() => handleOpenUpdate(route)}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-colors group cursor-pointer"
                 role="button"
