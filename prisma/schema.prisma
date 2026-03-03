@@ -67,4 +67,6 @@ enum ServiceLabels {
   Guest_House
   Supermarket
   Campsite
+  Alburgue
+  Blank
 }

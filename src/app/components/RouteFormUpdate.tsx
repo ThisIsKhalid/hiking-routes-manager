@@ -747,6 +747,8 @@ const SERVICE_OPTIONS = [
   "Guest_House",
   "Supermarket",
   "Campsite",
+  "Alburgue",
+  "Blank_Space",
 ];
 
 function ServicesSelectInput({
