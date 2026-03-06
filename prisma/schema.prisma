@@ -68,5 +68,5 @@ enum ServiceLabels {
   Supermarket
   Campsite
   Alburgue
-  Blank
+  // Blank_Space
 }
