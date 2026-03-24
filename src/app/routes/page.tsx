@@ -176,9 +176,18 @@ export default function RoutesPage() {
                   <div className="bg-cyan-950/50 p-3 rounded-lg text-cyan-400 group-hover:text-cyan-300 group-hover:bg-cyan-900/50 transition-colors">
                     <FileJson size={24} />
                   </div>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded">
-                    {route.route_id}
-                  </span>
+                  <div className="flex flex-col gap-1 items-end">
+                    <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded">
+                      {route.route_id}
+                    </span>
+                    {route.route_id?.endsWith("-spiritual") && (
+                      <span>
+                        <span className="text-xs font-mono text-slate-200 bg-cyan-900 px-2 py-1 rounded">
+                          Spiritual Route
+                        </span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="text-xl font-bold text-slate-100 mb-2">
