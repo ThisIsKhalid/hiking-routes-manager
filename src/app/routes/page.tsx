@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Download, FileJson, Map, X } from "lucide-react";
@@ -15,6 +17,7 @@ export default function RoutesPage() {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRoutes();
@@ -63,6 +66,35 @@ export default function RoutesPage() {
   const handleOpenUpdate = (route: RouteFormValues) => {
     setSelectedRoute(route);
     setIsModalOpen(true);
+  };
+
+  const handleDuplicate = async (route: RouteFormValues, e?: any) => {
+    // prevent the card click from opening the modal
+    if (e?.stopPropagation) e.stopPropagation();
+    if (!route) return;
+    const originalId = route.route_id;
+    const newId = `${originalId}-spiritual`;
+    const duplicateRoute = { ...route, route_id: newId };
+
+    try {
+      setDuplicatingId(originalId);
+      const res = await fetch("/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routes: [duplicateRoute] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError("Failed to duplicate route");
+      } else {
+        // refresh route list after successful creation
+        fetchRoutes();
+      }
+    } catch (err) {
+      setError("Error duplicating route");
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   const handleCloseUpdate = () => {
@@ -169,6 +201,24 @@ export default function RoutesPage() {
                     </div>
                   )}
                 </div>
+                {!route.route_id?.endsWith("-spiritual") &&
+                  !routes.some(
+                    (r) => r.route_id === `${route.route_id}-spiritual`,
+                  ) && (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDuplicate(route, e)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        disabled={duplicatingId === route.route_id}
+                        className="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {duplicatingId === route.route_id
+                          ? "Adding..."
+                          : "Add spiritual"}
+                      </button>
+                    </div>
+                  )}
               </div>
             ))}
           </div>

@@ -257,6 +257,7 @@ export default function RouteFormUpdate({
           <Input
             label="Route ID"
             error={errors.route_id?.message}
+            disabled={!!targetRouteId}
             {...register("route_id")}
           />
           <Input
