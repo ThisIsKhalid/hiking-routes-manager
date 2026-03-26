@@ -14,46 +14,56 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+// Reusable stage schema so we can validate pasted/copied stage JSON independently
+const stageSchema = z.object({
+  stage_number: z.coerce.number().min(1),
+  stage_name: z.string().min(1, "Stage Name is required"),
+  distance_km: z.coerce.number().optional().default(0),
+  distance_miles: z.coerce.number().optional().default(0),
+  gpx: z.string().optional(),
+  avg_daily_distance: z
+    .array(z.record(z.string(), z.any()))
+    .optional()
+    .default([]),
+  details: z.object({
+    total_distance: z.string().optional().default(""),
+    total_time: z.string().optional().default(""),
+    accumulated_ascent: z.string().optional().default(""),
+    accumulated_descent: z.string().optional().default(""),
+    walking_surface: z.array(z.string()).optional().default([]),
+    elevation_profile: z.string().optional().default(""),
+    challenges: z.array(z.string()).optional().default([]),
+    highlights: z.array(z.string()).optional().default([]),
+  }),
+  facilities: z
+    .array(
+      z.object({
+        index: z.coerce.number().optional().default(0),
+        name: z.string().optional(),
+        distance: z.string().optional(),
+        services: z.array(z.string()).optional().default([]),
+      }),
+    )
+    .optional()
+    .default([]),
+  accommodations: z
+    .array(
+      z.object({
+        name: z.string().optional().default(""),
+        price_category: z.string().optional().default(""),
+        contact_url: z.string().optional(),
+        contact_phone: z.string().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+});
+
 // Zod Schema matching the complex JSON structure
 const routeSchema = z.object({
   route_id: z.string().min(1, "Route ID is required"),
   route_name: z.string().min(1, "Route Name is required"),
-  stages: z.array(
-    z.object({
-      stage_number: z.coerce.number().min(1),
-      stage_name: z.string().min(1, "Stage Name is required"),
-      distance_km: z.coerce.number(),
-      distance_miles: z.coerce.number(),
-      gpx: z.string().optional(),
-      avg_daily_distance: z.array(
-        z.record(z.string(), z.any()), // Flexible to accept specific keys like avg_daily_distance_1
-      ),
-      details: z.object({
-        total_distance: z.string(),
-        total_time: z.string(),
-        accumulated_ascent: z.string(),
-        accumulated_descent: z.string(),
-        walking_surface: z.array(z.string()),
-        elevation_profile: z.string(),
-        challenges: z.array(z.string()),
-        highlights: z.array(z.string()),
-      }),
-      facilities: z.array(
-        z.object({
-          index: z.coerce.number(),
-          services: z.array(z.string()),
-        }),
-      ),
-      accommodations: z.array(
-        z.object({
-          name: z.string(),
-          price_category: z.string(),
-          contact_url: z.string().optional(),
-          contact_phone: z.string().optional(),
-        }),
-      ),
-    }),
-  ),
+  stages: z.array(stageSchema).optional().default([]),
 });
 
 type RouteFormValues = z.infer<typeof routeSchema>;
@@ -63,6 +73,10 @@ export default function RouteForm() {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [result, setResult] = useState<any>(null);
+  const [jsonInput, setJsonInput] = useState<string>("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
+  const [clipboardError, setClipboardError] = useState<string | null>(null);
 
   const {
     register,
@@ -70,6 +84,7 @@ export default function RouteForm() {
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<RouteFormValues>({
     resolver: zodResolver(routeSchema) as any,
@@ -88,6 +103,82 @@ export default function RouteForm() {
     control,
     name: "stages",
   });
+
+  // Import JSON from textarea into form values
+  const handleImportJson = () => {
+    try {
+      const parsed = JSON.parse(jsonInput || "{}");
+      setJsonError(null);
+      setValue("route_id", parsed.route_id || "");
+      setValue("route_name", parsed.route_name || "");
+      if (Array.isArray(parsed.stages)) {
+        setValue("stages", parsed.stages);
+      }
+    } catch (err) {
+      setJsonError("Invalid JSON. Please fix and try again.");
+    }
+  };
+
+  // Modal state for paste action (per-stage replace or append when index === null)
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteModalIndex, setPasteModalIndex] = useState<number | null>(null);
+  const [pasteModalText, setPasteModalText] = useState<string>("");
+  const [pasteModalError, setPasteModalError] = useState<string | null>(null);
+
+  const openPasteModal = async (index: number | null = null) => {
+    setPasteModalIndex(index);
+    setPasteModalError(null);
+    try {
+      const txt = await navigator.clipboard.readText();
+      setPasteModalText(txt || "");
+    } catch (err) {
+      setPasteModalText("");
+    }
+    setPasteModalOpen(true);
+  };
+
+  const closePasteModal = () => {
+    setPasteModalOpen(false);
+    setPasteModalText("");
+    setPasteModalError(null);
+    setPasteModalIndex(null);
+  };
+
+  const applyPasteModal = () => {
+    try {
+      const parsed = JSON.parse(pasteModalText || "{}");
+
+      if (
+        pasteModalIndex === null &&
+        !Object.prototype.hasOwnProperty.call(parsed, "stage_number")
+      ) {
+        // appending - assign next stage number if missing
+        parsed.stage_number = stageFields.length + 1;
+      }
+
+      if (
+        pasteModalIndex !== null &&
+        !Object.prototype.hasOwnProperty.call(parsed, "stage_number")
+      ) {
+        const existing = getValues(`stages.${pasteModalIndex}`) as any;
+        parsed.stage_number = existing?.stage_number ?? pasteModalIndex + 1;
+      }
+
+      const validated = stageSchema.parse(parsed);
+
+      if (pasteModalIndex === null) {
+        appendStage(validated as any);
+      } else {
+        setValue(`stages.${pasteModalIndex}`, validated as any);
+      }
+
+      closePasteModal();
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Invalid JSON or stage data";
+      setPasteModalError("Invalid stage JSON. " + msg);
+    }
+  };
 
   const onSubmit = async (data: RouteFormValues) => {
     setSubmissionStatus("loading");
@@ -146,32 +237,50 @@ export default function RouteForm() {
   };
 
   const handleJsonPaste = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    try {
-      const json = JSON.parse(e.target.value);
-      // naive merge/set
-      setValue("route_id", json.route_id || "");
-      setValue("route_name", json.route_name || "");
-      if (Array.isArray(json.stages)) {
-        setValue("stages", json.stages);
-      }
-    } catch (err) {
-      // ignore invalid json while typing
-    }
+    // keep the textarea value synchronized (legacy handler kept for typing)
+    setJsonInput(e.target.value);
   };
 
   return (
     <div className="space-y-8">
-      {/* Quick Import */}
-      {/* <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+      {/* Quick Import JSON */}
+      <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
         <label className="block text-sm font-medium text-cyan-300 mb-2">
-          Or paste existing JSON to populate form:
+          Paste route JSON to populate form (route-level JSON)
         </label>
         <textarea
+          value={jsonInput}
           onChange={handleJsonPaste}
           className="w-full h-24 bg-slate-900 border border-slate-600 rounded p-2 text-xs font-mono text-slate-300 focus:ring-1 focus:ring-cyan-500 outline-none"
           placeholder='{"route_id": "...", "stages": [...]}'
         />
-      </div> */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            type="button"
+            onClick={handleImportJson}
+            className="px-3 py-1 bg-cyan-600 text-white rounded text-sm"
+          >
+            Import JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setJsonInput("");
+              setJsonError(null);
+            }}
+            className="px-3 py-1 bg-slate-700 text-slate-200 rounded text-sm"
+          >
+            Clear
+          </button>
+          {clipboardMessage && (
+            <div className="text-xs text-emerald-300">{clipboardMessage}</div>
+          )}
+          {clipboardError && (
+            <div className="text-xs text-red-400">{clipboardError}</div>
+          )}
+        </div>
+        {jsonError && <p className="text-red-400 text-xs mt-2">{jsonError}</p>}
+      </div>
 
       <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -190,35 +299,48 @@ export default function RouteForm() {
         <div className="space-y-6">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
             <h2 className="text-xl font-bold text-white">Stages</h2>
-            <button
-              type="button"
-              onClick={() =>
-                appendStage({
-                  stage_number: stageFields.length + 1,
-                  stage_name: "",
-                  distance_km: 0,
-                  distance_miles: 0,
-                  gpx: "",
-                  avg_daily_distance: [],
-                  details: {
-                    total_distance: "",
-                    total_time: "",
-                    accumulated_ascent: "",
-                    accumulated_descent: "",
-                    walking_surface: [],
-                    elevation_profile: "",
-                    challenges: [],
-                    highlights: [],
-                  },
-                  facilities: [],
-                  accommodations: [],
-                })
-              }
-              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm transition-colors"
-            >
-              <Plus size={16} /> Add Stage
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  appendStage({
+                    stage_number: stageFields.length + 1,
+                    stage_name: "",
+                    distance_km: 0,
+                    distance_miles: 0,
+                    gpx: "",
+                    avg_daily_distance: [],
+                    details: {
+                      total_distance: "",
+                      total_time: "",
+                      accumulated_ascent: "",
+                      accumulated_descent: "",
+                      walking_surface: [],
+                      elevation_profile: "",
+                      challenges: [],
+                      highlights: [],
+                    },
+                    facilities: [],
+                    accommodations: [],
+                  })
+                }
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm transition-colors"
+              >
+                <Plus size={16} /> Add Stage
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openPasteModal(null)}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors"
+              >
+                Paste Stage
+              </button>
+            </div>
           </div>
+          {clipboardError && (
+            <div className="text-xs text-red-400 mt-2">{clipboardError}</div>
+          )}
 
           <div className="space-y-6">
             {stageFields.map((field, index) => (
@@ -229,6 +351,9 @@ export default function RouteForm() {
                 register={register}
                 remove={() => removeStage(index)}
                 errors={errors}
+                getValues={getValues}
+                setValue={setValue}
+                openPasteModal={openPasteModal}
               />
             ))}
             {stageFields.length === 0 && (
@@ -261,6 +386,44 @@ export default function RouteForm() {
             <pre>{JSON.stringify(result, null, 2)}</pre>
           </div>
         )}
+        {/* Paste Modal */}
+        {pasteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={closePasteModal}
+            />
+            <div className="relative bg-slate-900 p-6 rounded-lg w-full max-w-2xl z-10">
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Paste Stage JSON
+              </h3>
+              <textarea
+                value={pasteModalText}
+                onChange={(e) => setPasteModalText(e.target.value)}
+                className="w-full h-48 bg-slate-800 border border-slate-700 rounded p-2 text-sm font-mono text-slate-200 focus:ring-1 focus:ring-cyan-500 outline-none"
+              />
+              {pasteModalError && (
+                <p className="text-red-400 text-sm mt-2">{pasteModalError}</p>
+              )}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={closePasteModal}
+                  className="px-3 py-1 bg-slate-700 text-slate-200 rounded text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPasteModal}
+                  className="px-3 py-1 bg-cyan-600 text-white rounded text-sm"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
@@ -268,8 +431,19 @@ export default function RouteForm() {
 
 // Sub-components to keep things clean
 
-function StageItem({ index, control, register, remove, errors }: any) {
+function StageItem({
+  index,
+  control,
+  register,
+  remove,
+  errors,
+  getValues,
+  setValue,
+  openPasteModal,
+}: any) {
   const [isOpen, setIsOpen] = useState(true);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [localPasteError, setLocalPasteError] = useState<string | null>(null);
 
   // Field arrays for nested lists
   const {
@@ -309,6 +483,52 @@ function StageItem({ index, control, register, remove, errors }: any) {
           >
             <Trash2 size={16} />
           </button>
+
+          <button
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                const stage =
+                  typeof getValues === "function"
+                    ? getValues(`stages.${index}`)
+                    : undefined;
+                const sanitized = JSON.parse(JSON.stringify(stage || {}));
+                delete sanitized.id;
+                delete sanitized._id;
+                delete sanitized.route_id;
+                delete sanitized.routeId;
+                await navigator.clipboard.writeText(JSON.stringify(sanitized));
+                setCopyStatus("Copied");
+                setTimeout(() => setCopyStatus(null), 2000);
+              } catch (err) {
+                setCopyStatus("Copy failed");
+                setTimeout(() => setCopyStatus(null), 2000);
+              }
+            }}
+            className="p-2 text-slate-400 hover:text-cyan-300 hover:bg-slate-700 rounded transition-colors"
+          >
+            Copy
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openPasteModal?.(index);
+            }}
+            className="p-2 text-slate-400 hover:text-cyan-300 hover:bg-slate-700 rounded transition-colors"
+          >
+            Paste
+          </button>
+
+          {copyStatus && (
+            <span className="text-xs text-emerald-300">{copyStatus}</span>
+          )}
+          {localPasteError && (
+            <span className="text-xs text-red-400">{localPasteError}</span>
+          )}
+
           {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
