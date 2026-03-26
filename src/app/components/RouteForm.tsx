@@ -298,7 +298,7 @@ export default function RouteForm() {
 
         <div className="space-y-6">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-            <h2 className="text-xl font-bold text-white">Stages</h2>
+            <h2 className="text-xl font-bold text-white">Stages2</h2>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -560,7 +560,6 @@ function StageItem({
             />
             <Input label="GPX File Name" {...register(`stages.${index}.gpx`)} />
           </div>
-
           {/* Details Section */}
           <div className="bg-slate-900/50 p-4 rounded-lg space-y-4">
             <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">
@@ -605,21 +604,18 @@ function StageItem({
               label="Highlights"
             />
           </div>
-
           {/* Avg Daily Distance Section */}
           <AvgDailyDistanceInput
             control={control}
             stageIndex={index}
             register={register}
           />
-
           {/* Facilities Section */}
           <FacilitiesInput
             control={control}
             stageIndex={index}
             register={register}
           />
-
           {/* Accommodations Section */}
           <AccommodationsInput
             control={control}
