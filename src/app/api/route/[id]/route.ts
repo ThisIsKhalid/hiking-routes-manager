@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../../../lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
 
 function normalizeAvgDailyDistance(
   items: unknown,
@@ -198,41 +196,30 @@ export async function PUT(
       }),
     );
 
-    const updateResult = await prisma.route.updateMany({
+    // Find existing route by `routeId` then update by unique `id` to ensure a single-document update
+    const existing = await prisma.route.findFirst({
       where: { routeId: targetRouteId },
-      data: {
-        routeId: nextRouteId,
-        routeName: incomingRoute.route_name ?? "",
-        avgDailyDistance: {
-          set: (incomingRoute.avg_daily_distance ||
-            []) as Prisma.InputJsonValue[],
-        },
-        startingPoint: {
-          set: (incomingRoute.starting_point || []) as Prisma.InputJsonValue[],
-        },
-        stages: {
-          set: formattedStages as unknown as Prisma.StageCreateInput[],
-        },
-      },
     });
 
-    if (updateResult.count === 0) {
+    if (!existing) {
       return NextResponse.json(
         { success: false, error: "Route not found" },
         { status: 404 },
       );
     }
 
-    const updated = await prisma.route.findFirst({
-      where: { routeId: nextRouteId },
+    const updated = await prisma.route.update({
+      where: { id: existing.id },
+      data: {
+        routeId: nextRouteId,
+        routeName: incomingRoute.route_name ?? "",
+        avgDailyDistance: (incomingRoute.avg_daily_distance ||
+          []) as Prisma.InputJsonValue[],
+        startingPoint: (incomingRoute.starting_point ||
+          []) as Prisma.InputJsonValue[],
+        stages: formattedStages as unknown as Prisma.StageCreateInput[],
+      },
     });
-
-    if (!updated) {
-      return NextResponse.json(
-        { success: false, error: "Route not found after update" },
-        { status: 404 },
-      );
-    }
 
     return NextResponse.json(formatRoute(updated));
   } catch (error) {

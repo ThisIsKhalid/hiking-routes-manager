@@ -220,7 +220,7 @@ export default function RoutesPage() {
                         onClick={(e) => handleDuplicate(route, e)}
                         onKeyDown={(e) => e.stopPropagation()}
                         disabled={duplicatingId === route.route_id}
-                        className="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs cursor-pointer px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {duplicatingId === route.route_id
                           ? "Adding..."

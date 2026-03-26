@@ -748,7 +748,8 @@ const SERVICE_OPTIONS = [
   "Guest_House",
   "Supermarket",
   "Campsite",
-  "Alburgue",
+  "Albergue",
+  "Pharmacy",
   // "Blank_Space",
 ];
 
