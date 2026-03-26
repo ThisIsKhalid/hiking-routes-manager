@@ -436,12 +436,12 @@ export default function RouteFormUpdate({
           {pasteModalOpen &&
             typeof document !== "undefined" &&
             createPortal(
-              <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center">
+              <div className="fixed top-0 left-0 w-screen h-screen z-9999 flex items-center justify-center">
                 <div
                   className="absolute inset-0 bg-black/60"
                   onClick={closePasteModal}
                 />
-                <div className="relative bg-slate-900 p-6 rounded-lg w-full max-w-2xl z-[10000]">
+                <div className="relative bg-slate-900 p-6 rounded-lg w-full max-w-2xl z-10000">
                   <h3 className="text-lg font-semibold text-white mb-2">
                     Paste Stage JSON
                   </h3>
