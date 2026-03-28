@@ -301,15 +301,18 @@ export default function RouteFormUpdate({
       };
 
       const payload = { routes: [transformedData] };
-      if (!targetRouteId) return;
-      const res = await fetch(
-        `/api/route/${encodeURIComponent(targetRouteId)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const isUpdate = !!targetRouteId;
+      const url = isUpdate
+        ? `/api/route/${encodeURIComponent(targetRouteId as string)}`
+        : `/api/route`;
+      const method = isUpdate ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
       const resultData = await res.json();
       if (res.ok) {
         setSubmissionStatus("success");
