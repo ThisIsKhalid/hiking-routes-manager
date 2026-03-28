@@ -50,6 +50,7 @@ const routeSchema = z.object({
         name: z.string().optional(),
         avg_distance: z.string().optional(),
         avg_daily: z.string().optional(),
+        stage_number: z.coerce.number().optional(),
       }),
     )
     .optional(),
@@ -138,11 +139,31 @@ function normalizeInitialData(input?: RouteFormValues): RouteFormValues {
     };
   });
 
+  const normalizedStarting = (input.starting_point || []).map((item) => {
+    const record = item as Record<string, unknown>;
+    const stageNumRaw = record.stage_number as unknown;
+    let stageNumber = 1;
+    if (typeof stageNumRaw === "number") {
+      stageNumber = stageNumRaw;
+    } else if (typeof stageNumRaw === "string" && stageNumRaw.trim() !== "") {
+      const parsed = Number(stageNumRaw);
+      if (!Number.isNaN(parsed)) stageNumber = parsed;
+    }
+
+    return {
+      name: typeof record.name === "string" ? record.name : "",
+      avg_distance:
+        typeof record.avg_distance === "string" ? record.avg_distance : "",
+      avg_daily: typeof record.avg_daily === "string" ? record.avg_daily : "",
+      stage_number: stageNumber,
+    };
+  });
+
   return {
     route_id: input.route_id || "",
     route_name: input.route_name || "",
     avg_daily_distance: normalizedAvgDaily,
-    starting_point: input.starting_point || [],
+    starting_point: normalizedStarting,
     stages: input.stages || [],
   };
 }
@@ -1165,7 +1186,14 @@ function StartingPointInput({
         </h4>
         <button
           type="button"
-          onClick={() => append({ name: "", avg_distance: "", avg_daily: "" })}
+          onClick={() =>
+            append({
+              name: "",
+              avg_distance: "",
+              avg_daily: "",
+              stage_number: 1,
+            })
+          }
           className="text-xs bg-slate-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
         >
           <Plus size={12} /> Add Starting Point
@@ -1184,8 +1212,13 @@ function StartingPointInput({
             >
               <Trash2 size={14} />
             </button>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <Input label="Name" {...register(`starting_point.${i}.name`)} />
+              <Input
+                label="Stage Number"
+                type="number"
+                {...register(`starting_point.${i}.stage_number`)}
+              />
               <Input
                 label="Avg Distance"
                 {...register(`starting_point.${i}.avg_distance`)}
