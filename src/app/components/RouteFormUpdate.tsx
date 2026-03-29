@@ -178,6 +178,8 @@ export default function RouteFormUpdate({
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [modalCountdown, setModalCountdown] = useState(5);
 
   const {
     register,
@@ -316,8 +318,18 @@ export default function RouteFormUpdate({
       const resultData = await res.json();
       if (res.ok) {
         setSubmissionStatus("success");
-        setResult(resultData as Record<string, unknown>);
-        onUpdated?.(resultData as Record<string, unknown>);
+        // If updating an existing route, preserve existing behavior
+        if (isUpdate) {
+          setResult(resultData as Record<string, unknown>);
+          onUpdated?.(resultData as Record<string, unknown>);
+        } else {
+          // New create mode: show a success modal with countdown and clear the form
+          setShowSuccessModal(true);
+          setModalCountdown(5);
+          reset(normalizeInitialData(undefined));
+          setResult(null);
+          onUpdated?.(resultData as Record<string, unknown>);
+        }
       } else {
         setSubmissionStatus("error");
         setResult(resultData as Record<string, unknown>);
@@ -327,6 +339,27 @@ export default function RouteFormUpdate({
       setResult({ error: "Network or parsing error" });
     }
   };
+
+  // modal countdown and auto-close
+  useEffect(() => {
+    if (!showSuccessModal) return;
+    let mounted = true;
+    const id = setInterval(() => {
+      if (!mounted) return;
+      setModalCountdown((c) => {
+        if (c <= 1) {
+          // close modal when it reaches 0
+          setShowSuccessModal(false);
+          return 5;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [showSuccessModal]);
 
   return (
     <>
@@ -445,7 +478,7 @@ export default function RouteFormUpdate({
             </button>
           </div>
 
-          {result && (
+          {/* {result && (
             <div
               className={cn(
                 "p-4 rounded-lg border font-mono text-sm overflow-auto max-h-60",
@@ -456,7 +489,41 @@ export default function RouteFormUpdate({
             >
               <pre>{JSON.stringify(result, null, 2)}</pre>
             </div>
-          )}
+          )} */}
+          {showSuccessModal &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div
+                  className="absolute inset-0 bg-black/60"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setModalCountdown(5);
+                  }}
+                />
+                <div className="relative bg-slate-900 p-6 rounded-lg w-full max-w-sm z-50">
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Route created successfully
+                  </h3>
+                  <p className="text-sm text-slate-300 mb-4">
+                    The route was created.
+                  </p>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        setModalCountdown(5);
+                      }}
+                      className="bg-emerald-600 cursor-pointer text-white px-4 py-2 rounded"
+                    >
+                      {`Ok (${modalCountdown})`}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )}
           {pasteModalOpen &&
             typeof document !== "undefined" &&
             createPortal(
