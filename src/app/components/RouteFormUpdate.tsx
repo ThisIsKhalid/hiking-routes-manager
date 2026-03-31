@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import {
   useFieldArray,
   useForm,
+  useFormState,
   type Control,
   type UseFormRegister,
   type UseFormGetValues,
@@ -178,6 +179,9 @@ export default function RouteFormUpdate({
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [stageValidationError, setStageValidationError] = useState<
+    string | null
+  >(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [modalCountdown, setModalCountdown] = useState(5);
 
@@ -190,15 +194,108 @@ export default function RouteFormUpdate({
     formState: { errors },
     watch,
     setValue,
+    setError,
+    clearErrors,
     getValues,
   } = useForm<RouteFormValues>({
     resolver: zodResolver(routeSchema) as Resolver<RouteFormValues>,
+    mode: "onChange",
     defaultValues: normalizeInitialData(initialData),
   });
 
   useEffect(() => {
     reset(normalizeInitialData(initialData));
   }, [initialData, reset]);
+
+  // Live-validate stage numbers as the user types
+  const watchedStages = watch("stages");
+  useEffect(() => {
+    if (!Array.isArray(watchedStages)) {
+      setStageValidationError(null);
+      return;
+    }
+
+    // Clear previous per-field stage_number errors for current indexes
+    const names = watchedStages.map((_, i) => `stages.${i}.stage_number`);
+    if (names.length > 0) clearErrors(names as any);
+
+    const entries = watchedStages.map((s: any, i: number) => {
+      const raw: unknown = s?.stage_number;
+      const n = typeof raw === "number" ? raw : Number(raw);
+      const valid = Number.isFinite(n) && n >= 1 && Math.floor(n) === n;
+      return { idx: i, raw, n, valid };
+    });
+
+    // Set field errors for invalid numbers
+    entries
+      .filter((e) => !e.valid)
+      .forEach((e) => {
+        setError(`stages.${e.idx}.stage_number`, {
+          type: "manual",
+          message: "Stage number must be a positive integer.",
+        });
+      });
+
+    // Detect duplicates among valid numbers
+    const map: Record<number, number[]> = {};
+    entries
+      .filter((e) => e.valid)
+      .forEach((e) => {
+        map[e.n] = map[e.n] || [];
+        map[e.n].push(e.idx);
+      });
+    const duplicates = Object.entries(map).filter(([, arr]) => arr.length > 1);
+    duplicates.forEach(([numStr, idxs]) => {
+      const msg = `Stage ${numStr} is duplicated.`;
+      idxs.forEach((i) =>
+        setError(`stages.${i}.stage_number`, { type: "manual", message: msg }),
+      );
+    });
+
+    // Missing sequence detection and per-field missing errors
+    const validNums = entries.filter((e) => e.valid).map((e) => e.n);
+    let missing: number[] = [];
+    if (validNums.length > 0) {
+      const max = Math.max(...validNums);
+      missing = [];
+      for (let i = 1; i <= max; i++)
+        if (!validNums.includes(i)) missing.push(i);
+      if (missing.length > 0) {
+        setStageValidationError(
+          missing.length === 1
+            ? `Stage ${missing[0]} is missing.`
+            : `Missing stages: ${missing.join(", ")}`,
+        );
+      } else {
+        setStageValidationError(null);
+      }
+    } else {
+      setStageValidationError(null);
+    }
+
+    // Per-field: if a field's number is greater than some missing prior number,
+    // show the missing-stage message on that specific input (e.g. typing 22 when 21 is missing).
+    entries.forEach((e) => {
+      if (!e.valid) return; // already marked invalid
+      const missingLess = missing.filter((m) => m < e.n);
+      if (missingLess.length > 0) {
+        const msg =
+          missingLess.length === 1
+            ? `Stage ${missingLess[0]} is missing.`
+            : `Missing stages before this: ${missingLess.join(", ")}`;
+        setError(`stages.${e.idx}.stage_number`, {
+          type: "manual",
+          message: msg,
+        });
+      } else {
+        // clear any missing-related error on this field if present
+        const current = (errors as any)?.stages?.[e.idx]?.stage_number?.message;
+        if (current && current.toLowerCase().includes("missing")) {
+          clearErrors([`stages.${e.idx}.stage_number`] as any);
+        }
+      }
+    });
+  }, [watchedStages, setError, clearErrors, errors]);
 
   const {
     fields: stageFields,
@@ -267,6 +364,66 @@ export default function RouteFormUpdate({
   };
 
   const onSubmit = async (data: RouteFormValues) => {
+    setStageValidationError(null);
+
+    // Validate stage numbers and normalize order so array index = stage_number - 1
+    const stages = data.stages || [];
+    if (stages.length > 0) {
+      const nums: number[] = stages.map((s) => {
+        const raw: unknown = (s as any).stage_number;
+        const n = typeof raw === "number" ? raw : Number(raw);
+        return Number.isNaN(n) ? NaN : n;
+      });
+
+      // invalid numbers
+      const invalid = nums.filter(
+        (n) => !Number.isFinite(n) || n < 1 || Math.floor(n) !== n,
+      );
+      if (invalid.length > 0) {
+        setStageValidationError("Stage numbers must be positive integers.");
+        return;
+      }
+
+      // duplicates
+      const counts: Record<number, number> = {};
+      nums.forEach((n) => (counts[n] = (counts[n] || 0) + 1));
+      const duplicates = Object.entries(counts)
+        .filter(([, c]) => c > 1)
+        .map(([k]) => Number(k));
+      if (duplicates.length > 0) {
+        setStageValidationError(
+          `Stage number(s) already exist: ${duplicates.join(", ")}`,
+        );
+        return;
+      }
+
+      // missing numbers up to max
+      const max = Math.max(...nums);
+      const missing: number[] = [];
+      for (let i = 1; i <= max; i++) {
+        if (!nums.includes(i)) missing.push(i);
+      }
+      if (missing.length > 0) {
+        setStageValidationError(
+          missing.length === 1
+            ? `Stage ${missing[0]} is missing.`
+            : `Missing stages: ${missing.join(", ")}`,
+        );
+        return;
+      }
+
+      // reorder stages into normalized array where index = stage_number - 1
+      const normalized: typeof stages = Array.from(
+        { length: max },
+        () => ({}) as any,
+      );
+      stages.forEach((s) => {
+        const n = Number((s as any).stage_number);
+        normalized[n - 1] = s as any;
+      });
+      data.stages = normalized as any;
+    }
+
     setSubmissionStatus("loading");
     setResult(null);
 
@@ -449,6 +606,8 @@ export default function RouteFormUpdate({
                   setValue={setValue}
                   getValues={getValues}
                   openPasteModal={openPasteModal}
+                  setError={setError}
+                  clearErrors={clearErrors}
                 />
               ))}
               {stageFields.length === 0 && (
@@ -477,6 +636,17 @@ export default function RouteFormUpdate({
               {submissionStatus === "loading" ? "Saving..." : "Save Route"}
             </button>
           </div>
+
+          {stageValidationError && (
+            <div
+              className={cn(
+                "p-3 rounded-lg border font-mono text-sm overflow-auto",
+                "bg-red-900/20 border-red-500/50 text-red-300",
+              )}
+            >
+              <pre>{stageValidationError}</pre>
+            </div>
+          )}
 
           {/* {result && (
             <div
@@ -583,6 +753,8 @@ function StageItem({
   setValue,
   getValues,
   openPasteModal,
+  setError,
+  clearErrors,
 }: {
   index: number;
   control: Control<RouteFormValues>;
@@ -592,10 +764,93 @@ function StageItem({
   setValue: UseFormSetValue<RouteFormValues>;
   getValues: UseFormGetValues<RouteFormValues>;
   openPasteModal?: (index: number | null) => void;
+  setError?: any;
+  clearErrors?: any;
 }) {
   const [isOpen, setIsOpen] = useState(true);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [localPasteError, setLocalPasteError] = useState<string | null>(null);
+
+  const displayedNumber =
+    Number(watch(`stages.${index}.stage_number`)) || index + 1;
+
+  // reactive per-field errors for this stage_number input
+  const { errors: fieldErrors } = useFormState({ control });
+  const stageNumberError = (fieldErrors as any)?.stages?.[index]?.stage_number
+    ?.message;
+
+  // Immediate onChange validator for this stage's number
+  const runStageNumberValidation = (rawValue: unknown) => {
+    try {
+      const stagesCurrent = (getValues("stages") as any[]) || [];
+      const cloned = stagesCurrent.map((s) => ({ ...(s || {}) }));
+      const parsed = typeof rawValue === "number" ? rawValue : Number(rawValue);
+      if (!cloned[index]) cloned[index] = {};
+      cloned[index].stage_number = parsed;
+
+      const nums = cloned.map((s) => {
+        const n =
+          typeof s?.stage_number === "number"
+            ? s.stage_number
+            : Number(s?.stage_number);
+        return Number.isNaN(n) ? NaN : n;
+      });
+
+      // clear previous error for this field
+      clearErrors?.([`stages.${index}.stage_number`] as any);
+
+      if (
+        !Number.isFinite(parsed) ||
+        parsed < 1 ||
+        Math.floor(parsed) !== parsed
+      ) {
+        setError?.(`stages.${index}.stage_number`, {
+          type: "manual",
+          message: "Stage number must be a positive integer.",
+        });
+        return;
+      }
+
+      // duplicates
+      const counts: Record<number, number> = {};
+      nums.forEach((n) => {
+        if (Number.isFinite(n)) counts[n] = (counts[n] || 0) + 1;
+      });
+      if (counts[parsed] > 1) {
+        setError?.(`stages.${index}.stage_number`, {
+          type: "manual",
+          message: `Stage ${parsed} is duplicated.`,
+        });
+        return;
+      }
+
+      // missing prior stages
+      const validNums = nums.filter((n) => Number.isFinite(n));
+      if (validNums.length > 0) {
+        const max = Math.max(...validNums);
+        const missing: number[] = [];
+        for (let i = 1; i <= max; i++)
+          if (!validNums.includes(i)) missing.push(i);
+        const missingBefore = missing.filter((m) => m < parsed);
+        if (missingBefore.length > 0) {
+          const msg =
+            missingBefore.length === 1
+              ? `Stage ${missingBefore[0]} is missing.`
+              : `Missing stages before this: ${missingBefore.join(", ")}`;
+          setError?.(`stages.${index}.stage_number`, {
+            type: "manual",
+            message: msg,
+          });
+          return;
+        }
+      }
+
+      // clear if all good
+      clearErrors?.([`stages.${index}.stage_number`] as any);
+    } catch (err) {
+      // ignore
+    }
+  };
 
   // Since walking_surface is array of strings, useFieldArray might be tricky with simple strings
   // but we can wrap them or handle manual array management.
@@ -610,9 +865,11 @@ function StageItem({
       >
         <div className="flex items-center gap-4">
           <span className="bg-slate-700 text-slate-300 w-8 h-8 flex items-center justify-center rounded-full font-bold">
-            {index + 1}
+            {displayedNumber}
           </span>
-          <h3 className="font-semibold text-slate-200">Stage {index + 1}</h3>
+          <h3 className="font-semibold text-slate-200">
+            Stage {displayedNumber}
+          </h3>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -685,12 +942,22 @@ function StageItem({
               label="Stage Name"
               {...register(`stages.${index}.stage_name`)}
             />
-            <Input
-              label="Stage Number"
-              title="Auto generated by system."
-              type="number"
-              {...register(`stages.${index}.stage_number`)}
-            />
+            {(() => {
+              const reg = register(`stages.${index}.stage_number`);
+              return (
+                <Input
+                  label="Stage Number"
+                  title="Auto generated by system."
+                  type="number"
+                  {...reg}
+                  onChange={(e) => {
+                    reg.onChange(e);
+                    runStageNumberValidation(e.target.value);
+                  }}
+                  error={stageNumberError}
+                />
+              );
+            })()}
             <Input
               label="Distance (km)"
               type="number"
