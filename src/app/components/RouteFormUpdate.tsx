@@ -456,9 +456,10 @@ export default function RouteFormUpdate({
       };
 
       const payload = { routes: [transformedData] };
-      const isUpdate = !!targetRouteId;
+      const resolvedTargetId = targetRouteId || initialData?.route_id;
+      const isUpdate = Boolean(resolvedTargetId);
       const url = isUpdate
-        ? `/api/route/${encodeURIComponent(targetRouteId as string)}`
+        ? `/api/route/${encodeURIComponent(resolvedTargetId as string)}`
         : `/api/route`;
       const method = isUpdate ? "PUT" : "POST";
 
