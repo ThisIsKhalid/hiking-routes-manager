@@ -246,14 +246,10 @@ export default function RouteFormUpdate({
         parsed.stage_number = stageFields.length + 1;
       }
 
-      if (
-        pasteModalIndex !== null &&
-        !Object.prototype.hasOwnProperty.call(parsed, "stage_number")
-      ) {
-        const existing = getValues
-          ? getValues(`stages.${pasteModalIndex}`)
-          : undefined;
-        parsed.stage_number = existing?.stage_number ?? pasteModalIndex + 1;
+      // If pasting into an existing index, always set the stage_number
+      // to the destination index + 1 so pasted stage matches its position.
+      if (pasteModalIndex !== null) {
+        parsed.stage_number = pasteModalIndex + 1;
       }
 
       if (pasteModalIndex === null) {
@@ -642,6 +638,8 @@ function StageItem({
                 const sanitized = JSON.parse(JSON.stringify(stage || {}));
                 delete sanitized.id;
                 delete sanitized._id;
+                // remove stage_number so pasted stage will adopt destination index
+                delete sanitized.stage_number;
                 delete sanitized.route_id;
                 delete sanitized.routeId;
                 await navigator.clipboard.writeText(JSON.stringify(sanitized));
