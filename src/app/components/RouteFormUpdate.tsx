@@ -210,6 +210,8 @@ export default function RouteFormUpdate({
     reset(normalizeInitialData(initialData));
   }, [initialData, reset]);
 
+  const isUpdateMode = Boolean(targetRouteId || initialData?.route_id);
+
   // Live-validate stage numbers as the user types
   // eslint-disable-next-line react-hooks/incompatible-library
   const watchedStages = watch("stages");
@@ -618,6 +620,7 @@ export default function RouteFormUpdate({
                   openPasteModal={openPasteModal}
                   setError={setError}
                   clearErrors={clearErrors}
+                  collapsedByDefault={isUpdateMode}
                 />
               ))}
               {stageFields.length === 0 && (
@@ -765,6 +768,7 @@ function StageItem({
   openPasteModal,
   setError,
   clearErrors,
+  collapsedByDefault,
 }: {
   index: number;
   control: Control<RouteFormValues>;
@@ -776,8 +780,10 @@ function StageItem({
   openPasteModal?: (index: number | null) => void;
   setError?: any;
   clearErrors?: any;
+  collapsedByDefault?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(true);
+  // If `collapsedByDefault` is true (update mode), start closed.
+  const [isOpen, setIsOpen] = useState(() => !(collapsedByDefault ?? false));
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [localPasteError, setLocalPasteError] = useState<string | null>(null);
 
