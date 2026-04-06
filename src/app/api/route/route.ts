@@ -45,6 +45,7 @@ export async function GET() {
 
     const formattedRoutes = routes.map((route) => ({
       route_id: route.routeId,
+      group_name: route.groupName,
       route_name: route.routeName,
       avg_daily_distance: normalizeAvgDailyDistance(route.avgDailyDistance),
       starting_point: route.startingPoint || [],
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
 
     type IncomingRoute = {
       route_id?: string;
+      group_name?: string;
       route_name?: string;
       stages?: StageIn[];
       avg_daily_distance?: Array<Record<string, unknown>>;
@@ -183,7 +185,7 @@ export async function POST(request: Request) {
       ? (body.routes[0] as IncomingRoute)
       : (body as IncomingRoute);
 
-    const { route_id, route_name, stages } = incomingRoute || {};
+    const { route_id, group_name, route_name, stages } = incomingRoute || {};
 
     const formattedStages = (stages || []).map((stage: StageIn) => ({
       stageNumber: stage.stage_number ?? 0,
@@ -223,6 +225,7 @@ export async function POST(request: Request) {
       data: {
         routeId: route_id ?? "",
         routeName: route_name ?? "",
+        groupName: group_name ?? "",
         avgDailyDistance: (incomingRoute.avg_daily_distance ||
           []) as unknown as Prisma.InputJsonValue[],
         startingPoint: (incomingRoute.starting_point ||
@@ -234,6 +237,7 @@ export async function POST(request: Request) {
     // Map created route to single-route snake_case response matching requested `Route` type
     const responseRoute = {
       route_id: newRoute.routeId,
+      group_name: newRoute.groupName,
       route_name: newRoute.routeName,
       avg_daily_distance: normalizeAvgDailyDistance(newRoute.avgDailyDistance),
       starting_point: (newRoute.startingPoint || []) as Prisma.InputJsonValue[],

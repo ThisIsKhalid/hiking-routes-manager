@@ -30,6 +30,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 // Zod Schema matching the complex JSON structure
 const routeSchema = z.object({
   route_id: z.string().min(1, "Route ID is required"),
+  group_name: z.string().optional().default(""),
   route_name: z.string().min(1, "Route Name is required"),
   // route-level average daily distance metrics (array of objects)
   avg_daily_distance: z
@@ -108,6 +109,7 @@ function normalizeInitialData(input?: RouteFormValues): RouteFormValues {
   if (!input) {
     return {
       route_id: "",
+      group_name: "",
       route_name: "",
       avg_daily_distance: [],
       starting_point: [],
@@ -162,6 +164,7 @@ function normalizeInitialData(input?: RouteFormValues): RouteFormValues {
 
   return {
     route_id: input.route_id || "",
+    group_name: (input as any).group_name || "",
     route_name: input.route_name || "",
     avg_daily_distance: normalizedAvgDaily,
     starting_point: normalizedStarting,
@@ -208,6 +211,7 @@ export default function RouteFormUpdate({
   }, [initialData, reset]);
 
   // Live-validate stage numbers as the user types
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedStages = watch("stages");
   useEffect(() => {
     if (!Array.isArray(watchedStages)) {
@@ -531,7 +535,7 @@ export default function RouteFormUpdate({
       </div> */}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Input
               label="Route ID"
               error={errors.route_id?.message}
@@ -542,6 +546,11 @@ export default function RouteFormUpdate({
               label="Route Name"
               error={errors.route_name?.message}
               {...register("route_name")}
+            />
+            <Input
+              label="Group Name"
+              error={errors.group_name?.message}
+              {...register("group_name")}
             />
           </div>
 

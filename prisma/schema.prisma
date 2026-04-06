@@ -10,6 +10,7 @@ datasource db {
 model Route {
   id               String  @id @default(auto()) @map("_id") @db.ObjectId
   routeId          String  @map("route_id")
+  groupName        String  @default("") @map("group_name")
   routeName        String  @map("route_name")
   // route-level avg daily distance metrics (stored as JSON objects with dynamic keys)
   avgDailyDistance Json[]  @map("avg_daily_distance")

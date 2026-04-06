@@ -36,6 +36,7 @@ function normalizeAvgDailyDistance(
 function formatRoute(route: Prisma.RouteGetPayload<Prisma.RouteDefaultArgs>) {
   return {
     route_id: route.routeId,
+    group_name: route.groupName,
     route_name: route.routeName,
     avg_daily_distance: normalizeAvgDailyDistance(route.avgDailyDistance),
     starting_point: route.startingPoint || [],
@@ -147,6 +148,7 @@ export async function PUT(
 
     type IncomingRoute = {
       route_id?: string;
+      group_name?: string;
       route_name?: string;
       stages?: StageIn[];
       avg_daily_distance?: Array<Record<string, unknown>>;
@@ -213,6 +215,7 @@ export async function PUT(
       data: {
         routeId: nextRouteId,
         routeName: incomingRoute.route_name ?? "",
+        groupName: incomingRoute.group_name ?? "",
         avgDailyDistance: (incomingRoute.avg_daily_distance ||
           []) as Prisma.InputJsonValue[],
         startingPoint: (incomingRoute.starting_point ||

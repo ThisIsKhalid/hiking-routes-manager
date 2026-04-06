@@ -62,6 +62,7 @@ const stageSchema = z.object({
 // Zod Schema matching the complex JSON structure
 const routeSchema = z.object({
   route_id: z.string().min(1, "Route ID is required"),
+  group_name: z.string().optional().default(""),
   route_name: z.string().min(1, "Route Name is required"),
   stages: z.array(stageSchema).optional().default([]),
 });
@@ -90,6 +91,7 @@ export default function RouteForm() {
     resolver: zodResolver(routeSchema) as any,
     defaultValues: {
       route_id: "",
+      group_name: "",
       route_name: "",
       stages: [],
     },
@@ -110,6 +112,7 @@ export default function RouteForm() {
       const parsed = JSON.parse(jsonInput || "{}");
       setJsonError(null);
       setValue("route_id", parsed.route_id || "");
+      setValue("group_name", parsed.group_name || "");
       setValue("route_name", parsed.route_name || "");
       if (Array.isArray(parsed.stages)) {
         setValue("stages", parsed.stages);
@@ -283,7 +286,7 @@ export default function RouteForm() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Input
             label="Route ID"
             error={errors.route_id?.message}
@@ -294,6 +297,7 @@ export default function RouteForm() {
             error={errors.route_name?.message}
             {...register("route_name")}
           />
+          <Input label="Group Name" {...register("group_name")} />
         </div>
 
         <div className="space-y-6">

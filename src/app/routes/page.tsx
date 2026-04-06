@@ -193,6 +193,14 @@ export default function RoutesPage() {
                 <h3 className="text-xl font-bold text-slate-100 mb-2">
                   {route.route_name}
                 </h3>
+                {route.group_name && (
+                  <p className="text-sm text-slate-400 mb-2">
+                    Group:{" "}
+                    <span className="font-mono text-slate-200">
+                      {route.group_name}
+                    </span>
+                  </p>
+                )}
 
                 <div className="space-y-2 text-sm text-slate-400">
                   <div className="flex justify-between">
