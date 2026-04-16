@@ -233,3 +233,39 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const params = await context.params;
+    const targetRouteId = params.id;
+
+    const existing = await prisma.route.findFirst({
+      where: { routeId: targetRouteId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Route not found" },
+        { status: 404 },
+      );
+    }
+
+    await prisma.route.delete({
+      where: { id: existing.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      deleted_route_id: targetRouteId,
+    });
+  } catch (error) {
+    console.error("Error deleting route:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete route" },
+      { status: 500 },
+    );
+  }
+}

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Download, FileJson, Map, X } from "lucide-react";
+import { Download, FileJson, Map, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import RouteFormUpdate, {
@@ -18,6 +18,7 @@ export default function RoutesPage() {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRoutes();
@@ -94,6 +95,38 @@ export default function RoutesPage() {
       setError("Error duplicating route");
     } finally {
       setDuplicatingId(null);
+    }
+  };
+
+  const handleDelete = async (routeId: string, e?: any) => {
+    // prevent the card click from opening the modal
+    if (e?.stopPropagation) e.stopPropagation();
+    if (!routeId) return;
+
+    const confirmed = window.confirm(
+      `Delete this route?\n\n${routeId}\n\nThis cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setError(null);
+      setDeletingId(routeId);
+
+      const res = await fetch(`/api/route/${encodeURIComponent(routeId)}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError((data as any)?.error || "Failed to delete route");
+        return;
+      }
+
+      setRoutes((prev) => prev.filter((r) => r.route_id !== routeId));
+    } catch (err) {
+      setError("Error deleting route");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -176,17 +209,32 @@ export default function RoutesPage() {
                   <div className="bg-cyan-950/50 p-3 rounded-lg text-cyan-400 group-hover:text-cyan-300 group-hover:bg-cyan-900/50 transition-colors">
                     <FileJson size={24} />
                   </div>
-                  <div className="flex flex-col gap-1 items-end">
-                    <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded">
-                      {route.route_id}
-                    </span>
-                    {route.route_id?.endsWith("-spiritual") && (
-                      <span>
-                        <span className="text-xs font-mono text-slate-200 bg-cyan-900 px-2 py-1 rounded">
-                          Spiritual Route
-                        </span>
+
+                  <div className="flex items-start gap-2">
+                    <div className="flex flex-col gap-1 items-end">
+                      <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded">
+                        {route.route_id}
                       </span>
-                    )}
+                      {route.route_id?.endsWith("-spiritual") && (
+                        <span>
+                          <span className="text-xs font-mono text-slate-200 bg-cyan-900 px-2 py-1 rounded">
+                            Spiritual Route
+                          </span>
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      title="Delete route"
+                      aria-label={`Delete route ${route.route_id}`}
+                      onClick={(e) => handleDelete(route.route_id, e)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      disabled={deletingId === route.route_id}
+                      className="p-2 text-slate-400 hover:text-red-300 hover:bg-slate-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
 
