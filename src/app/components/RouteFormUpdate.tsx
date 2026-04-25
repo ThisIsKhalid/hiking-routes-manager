@@ -53,6 +53,18 @@ const routeSchema = z.object({
         avg_distance: z.string().optional(),
         avg_daily: z.string().optional(),
         stage_number: z.coerce.number().optional(),
+        accommodations: z
+          .array(
+            z.object({
+              name: z.string().optional(),
+              price_category: z.string().optional(),
+              contact_url: z.string().optional(),
+              contact_phone: z.string().optional(),
+              lat: z.coerce.number().optional(),
+              long: z.coerce.number().optional(),
+            }),
+          )
+          .optional(),
       }),
     )
     .optional(),
@@ -159,6 +171,30 @@ function normalizeInitialData(input?: RouteFormValues): RouteFormValues {
         typeof record.avg_distance === "string" ? record.avg_distance : "",
       avg_daily: typeof record.avg_daily === "string" ? record.avg_daily : "",
       stage_number: stageNumber,
+      accommodations: Array.isArray(record.accommodations)
+        ? (record.accommodations as Array<Record<string, unknown>>).map(
+            (accommodation) => ({
+              name:
+                typeof accommodation.name === "string"
+                  ? accommodation.name
+                  : "",
+              price_category:
+                typeof accommodation.price_category === "string"
+                  ? accommodation.price_category
+                  : "",
+              contact_url:
+                typeof accommodation.contact_url === "string"
+                  ? accommodation.contact_url
+                  : "",
+              contact_phone:
+                typeof accommodation.contact_phone === "string"
+                  ? accommodation.contact_phone
+                  : "",
+              lat: accommodation.lat as number | undefined,
+              long: accommodation.long as number | undefined,
+            }),
+          )
+        : [],
     };
   });
 
@@ -1603,6 +1639,114 @@ function StartingPointInput({
               <Input
                 label="Avg Daily"
                 {...register(`starting_point.${i}.avg_daily`)}
+              />
+            </div>
+
+            <div className="mt-4">
+              <StartingPointAccommodationsInput
+                control={control}
+                startingPointIndex={i}
+                register={register}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StartingPointAccommodationsInput({
+  control,
+  startingPointIndex,
+  register,
+}: {
+  control: Control<RouteFormValues>;
+  startingPointIndex: number;
+  register: UseFormRegister<RouteFormValues>;
+}) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `starting_point.${startingPointIndex}.accommodations`,
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h5 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+          Accommodations
+        </h5>
+        <button
+          type="button"
+          onClick={() =>
+            append({
+              name: "",
+              price_category: "",
+              contact_url: "",
+              contact_phone: "",
+              lat: 0,
+              long: 0,
+            })
+          }
+          className="text-xs bg-slate-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
+        >
+          <Plus size={12} /> Add Accommodation
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {fields.map((field, accommodationIndex) => (
+          <div
+            key={field.id}
+            className="bg-slate-900 p-3 rounded border border-slate-700 relative group"
+          >
+            <button
+              type="button"
+              onClick={() => remove(accommodationIndex)}
+              className="absolute top-2 right-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Trash2 size={14} />
+            </button>
+            <div className="space-y-2">
+              <Input
+                label="Name"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.name`,
+                )}
+              />
+              <Input
+                label="Price ($)"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.price_category`,
+                )}
+              />
+              <Input
+                label="URL"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.contact_url`,
+                )}
+              />
+              <Input
+                label="Phone"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.contact_phone`,
+                )}
+              />
+              <Input
+                label="Latitude"
+                type="number"
+                step="0.000001"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.lat`,
+                )}
+              />
+              <Input
+                label="Longitude"
+                type="number"
+                step="0.000001"
+                {...register(
+                  `starting_point.${startingPointIndex}.accommodations.${accommodationIndex}.long`,
+                )}
               />
             </div>
           </div>
