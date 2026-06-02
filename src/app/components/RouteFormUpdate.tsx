@@ -640,6 +640,8 @@ export default function RouteFormUpdate({
               control={control}
               register={register}
               watch={watch}
+              getValues={getValues}
+              setValue={setValue}
             />
 
             <div className="space-y-6">
@@ -1563,10 +1565,14 @@ function StartingPointInput({
   control,
   register,
   watch,
+  getValues,
+  setValue,
 }: {
   control: Control<RouteFormValues>;
   register: UseFormRegister<RouteFormValues>;
   watch: UseFormWatch<RouteFormValues>;
+  getValues?: UseFormGetValues<RouteFormValues>;
+  setValue?: UseFormSetValue<RouteFormValues>;
 }) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -1576,82 +1582,263 @@ function StartingPointInput({
   const stages = (watch("stages") as unknown as unknown[]) || [];
   const stageCount = Math.max(1, stages.length);
 
+  // Paste modal state for starting points
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteModalIndex, setPasteModalIndex] = useState<number | null>(null);
+  const [pasteModalText, setPasteModalText] = useState<string>("");
+  const [pasteModalError, setPasteModalError] = useState<string | null>(null);
+
+  const openPasteModal = async (index: number | null = null) => {
+    setPasteModalIndex(index);
+    setPasteModalError(null);
+    try {
+      const txt = await navigator.clipboard.readText();
+      setPasteModalText(txt || "");
+    } catch (err) {
+      setPasteModalText("");
+    }
+    setPasteModalOpen(true);
+  };
+
+  const closePasteModal = () => {
+    setPasteModalOpen(false);
+    setPasteModalText("");
+    setPasteModalError(null);
+    setPasteModalIndex(null);
+  };
+
+  const applyPasteModal = () => {
+    try {
+      const parsed = JSON.parse(pasteModalText || "{}");
+
+      if (
+        pasteModalIndex === null &&
+        !Object.prototype.hasOwnProperty.call(parsed, "stage_number")
+      ) {
+        // appending - assign default stage_number if missing
+        parsed.stage_number = 1;
+      }
+
+      if (pasteModalIndex === null) {
+        append(parsed as any);
+      } else if (typeof setValue === "function") {
+        setValue(`starting_point.${pasteModalIndex}`, parsed as any);
+      }
+
+      closePasteModal();
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Invalid JSON or starting point data";
+      setPasteModalError("Invalid starting point JSON. " + msg);
+    }
+  };
+
   return (
     <div className="bg-slate-900/30 p-4 rounded-lg space-y-3 border border-slate-700">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">
           Starting Points
         </h4>
-        <button
-          type="button"
-          onClick={() =>
-            append({
-              name: "",
-              avg_distance: "",
-              avg_daily: "",
-              stage_number: 1,
-            })
-          }
-          className="text-xs bg-slate-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
-        >
-          <Plus size={12} /> Add Starting Point
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              append({
+                name: "",
+                avg_distance: "",
+                avg_daily: "",
+                stage_number: 1,
+              })
+            }
+            className="text-xs bg-slate-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
+          >
+            <Plus size={12} /> Add Starting Point
+          </button>
+          <button
+            type="button"
+            onClick={() => openPasteModal(null)}
+            className="text-xs bg-white!-700 px-2 py-1 rounded text-cyan-300 flex items-center gap-1 hover:bg-slate-600"
+          >
+            Paste Point
+          </button>
+        </div>
       </div>
       <div className="space-y-3">
         {fields.map((field, i) => (
-          <div
+          <StartingPointItem
             key={field.id}
-            className="bg-slate-950 p-3 rounded border border-slate-800 relative group"
-          >
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              className="absolute top-2 right-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 size={14} />
-            </button>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Input label="Name" {...register(`starting_point.${i}.name`)} />
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">
-                  Stage Number
-                </label>
-                <select
-                  className={cn(
-                    "w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all",
-                  )}
-                  {...register(`starting_point.${i}.stage_number`, {
-                    valueAsNumber: true,
-                  } as any)}
-                >
-                  {Array.from({ length: stageCount }, (_, idx) => (
-                    <option key={`opt-${i}-${idx + 1}`} value={idx + 1}>
-                      {idx + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <Input
-                label="Avg Distance"
-                {...register(`starting_point.${i}.avg_distance`)}
-              />
-              <Input
-                label="Avg Daily"
-                {...register(`starting_point.${i}.avg_daily`)}
-              />
-            </div>
-
-            <div className="mt-4">
-              <StartingPointAccommodationsInput
-                control={control}
-                startingPointIndex={i}
-                register={register}
-              />
-            </div>
-          </div>
+            index={i}
+            register={register}
+            watch={watch}
+            remove={() => remove(i)}
+            stageCount={stageCount}
+            control={control}
+            getValues={getValues}
+            setValue={setValue}
+            openPasteModal={openPasteModal}
+          />
         ))}
+      </div>
+
+      {pasteModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed top-0 left-0 w-screen h-screen z-9999 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={closePasteModal}
+            />
+            <div className="relative bg-slate-900 p-6 rounded-lg w-full max-w-2xl z-10000">
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Paste Starting Point JSON
+              </h3>
+              <textarea
+                value={pasteModalText}
+                onChange={(e) => setPasteModalText(e.target.value)}
+                className="w-full h-48 bg-slate-800 border border-slate-700 rounded p-2 text-sm font-mono text-slate-200 focus:ring-1 focus:ring-cyan-500 outline-none"
+              />
+              {pasteModalError && (
+                <p className="text-red-400 text-sm mt-2">{pasteModalError}</p>
+              )}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={closePasteModal}
+                  className="px-3 py-1 bg-slate-700 text-slate-200 rounded text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPasteModal}
+                  className="px-3 py-1 bg-cyan-600 text-white rounded text-sm"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function StartingPointItem({
+  index,
+  register,
+  watch,
+  remove,
+  stageCount,
+  control,
+  getValues,
+  setValue,
+  openPasteModal,
+}: {
+  index: number;
+  register: UseFormRegister<RouteFormValues>;
+  watch: UseFormWatch<RouteFormValues>;
+  remove: () => void;
+  stageCount: number;
+  control: Control<RouteFormValues>;
+  getValues?: UseFormGetValues<RouteFormValues>;
+  setValue?: UseFormSetValue<RouteFormValues>;
+  openPasteModal?: (index: number | null) => void;
+}) {
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+
+  return (
+    <div className="bg-slate-950 p-3 rounded border border-slate-800 relative group">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={remove}
+            className="text-slate-500 hover:text-red-400  group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const point =
+                  typeof getValues === "function"
+                    ? getValues(`starting_point.${index}`)
+                    : undefined;
+                const sanitized = JSON.parse(JSON.stringify(point || {}));
+                delete sanitized.id;
+                delete sanitized._id;
+                delete sanitized.route_id;
+                delete sanitized.routeId;
+                await navigator.clipboard.writeText(JSON.stringify(sanitized));
+                setCopyStatus("Copied");
+                setTimeout(() => setCopyStatus(null), 2000);
+              } catch (err) {
+                setCopyStatus("Copy failed");
+                setTimeout(() => setCopyStatus(null), 2000);
+              }
+            }}
+            className="text-slate-400 hover:text-cyan-300  group-hover:opacity-100 transition-opacity"
+            title="Copy this starting point"
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            onClick={() => openPasteModal?.(index)}
+            className="text-slate-400 hover:text-cyan-300 group-hover:opacity-100 transition-opacity"
+            title="Paste a starting point"
+          >
+            Paste
+          </button>
+          {copyStatus && (
+            <span className="text-xs text-emerald-300">{copyStatus}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <Input label="Name" {...register(`starting_point.${index}.name`)} />
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">
+            Stage Number
+          </label>
+          <select
+            className={cn(
+              "w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all",
+            )}
+            {...register(`starting_point.${index}.stage_number`, {
+              valueAsNumber: true,
+            } as any)}
+          >
+            {Array.from({ length: stageCount }, (_, idx) => (
+              <option key={`opt-${index}-${idx + 1}`} value={idx + 1}>
+                {idx + 1}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <Input
+          label="Avg Distance"
+          {...register(`starting_point.${index}.avg_distance`)}
+        />
+        <Input
+          label="Avg Daily"
+          {...register(`starting_point.${index}.avg_daily`)}
+        />
+      </div>
+
+      <div className="mt-4">
+        <StartingPointAccommodationsInput
+          control={control}
+          startingPointIndex={index}
+          register={register}
+        />
       </div>
     </div>
   );
