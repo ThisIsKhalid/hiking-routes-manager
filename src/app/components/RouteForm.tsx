@@ -822,6 +822,7 @@ const SERVICE_OPTIONS = [
   "Campsite",
   "Albergue",
   "Pharmacy",
+  "Beach_umbrella",
   // "Blank_Space",
 ];
 

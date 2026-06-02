@@ -70,5 +70,6 @@ enum ServiceLabels {
   Campsite
   Albergue
   Pharmacy
+  Beach_umbrella
   // Blank_Space
 }
